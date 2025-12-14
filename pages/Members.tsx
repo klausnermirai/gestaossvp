@@ -111,7 +111,7 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
 
             {/* Linha de Autenticação e Vínculo */}
             
-            <div className="md:col-span-3">
+            <div className="md:col-span-6">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Conferência (Vínculo)</label>
                 <select 
                     className="w-full px-3 py-2 border rounded-md bg-white" 
@@ -122,18 +122,8 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                     {conferences.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
-            <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nível de Acesso</label>
-                <select 
-                    className="w-full px-3 py-2 border rounded-md bg-white" 
-                    value={newMember.accessLevel} 
-                    onChange={e => setNewMember({...newMember, accessLevel: e.target.value as any})}
-                >
-                    <option value="user">Membro (Acesso Conferência)</option>
-                    <option value="admin">Administrador (Conselho/Global)</option>
-                </select>
-            </div>
-
+            
+            {/* Nível de Acesso Removido: Definido automaticamente pelo Cargo abaixo */}
 
             {/* Linha 2: Contato e Endereço */}
             <div className="md:col-span-2">
@@ -170,7 +160,13 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <select 
                     className="w-full px-3 py-2 border rounded-md bg-white" 
                     value={newMember.role} 
-                    onChange={e => setNewMember({...newMember, role: e.target.value})}
+                    onChange={e => {
+                        const newRole = e.target.value;
+                        // Regra de Negócio: Apenas 'Gestor do Sistema' ganha permissão de ADMIN automaticamente.
+                        // Todos os outros cargos ganham permissão USER (restrito à conferência).
+                        const newAccessLevel = newRole === 'Gestor do Sistema' ? 'admin' : 'user';
+                        setNewMember({...newMember, role: newRole, accessLevel: newAccessLevel});
+                    }}
                 >
                     <option value="Presidente">Presidente</option>
                     <option value="Vice-Presidente">Vice-Presidente</option>
@@ -180,6 +176,9 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                     <option value="Membro">Membro</option>
                     <option value="Aspirante">Aspirante</option>
                 </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                    * Gestor do Sistema recebe acesso administrativo total.
+                </p>
             </div>
             <div className="md:col-span-2 flex items-center pt-6">
                 <label className="flex items-center space-x-2 cursor-pointer">
