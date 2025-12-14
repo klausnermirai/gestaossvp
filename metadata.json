@@ -1,0 +1,5 @@
+{
+  "name": "SSVP - Cadastro de Assistidos",
+  "description": "Um sistema digital para o cadastro de famílias assistidas pela Sociedade de São Vicente de Paulo, permitindo o registro de informações detalhadas durante visitas domiciliares.",
+  "requestFramePermissions": []
+}
