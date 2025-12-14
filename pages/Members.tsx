@@ -12,9 +12,7 @@ interface MembersProps {
   onDelete: (id: string) => void;
 }
 
-export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, onDelete }) => {
-  const [isAdding, setIsAdding] = useState(false);
-  const [newMember, setNewMember] = useState<Partial<Member>>({
+const emptyMember: Partial<Member> = {
     name: '',
     cpf: '',
     password: 'ssvp', // Default Password
@@ -28,28 +26,38 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
     admissionDate: new Date().toISOString().split('T')[0],
     acclamationDate: '',
     proclamationDate: ''
-  });
+};
 
-  const handleAdd = (e: React.FormEvent) => {
+export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, onDelete }) => {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formData, setFormData] = useState<Partial<Member>>(emptyMember);
+
+  const handleNew = () => {
+    // Se o usuário vê apenas uma conferência, já pré-seleciona ela no cadastro
+    const defaultConfId = conferences.length === 1 ? conferences[0].id : '';
+    setFormData({ ...emptyMember, conferenceId: defaultConfId });
+    setIsFormOpen(true);
+  };
+
+  const handleEdit = (member: Member) => {
+    setFormData({ ...member });
+    setIsFormOpen(true);
+  };
+
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMember.name && newMember.cpf) {
-      onSave({ ...newMember, id: uuidv4() } as Member);
-      setNewMember({
-        name: '',
-        cpf: '',
-        password: 'ssvp',
-        conferenceId: '',
-        accessLevel: 'user',
-        address: '',
-        type: 'Confrade',
-        role: 'Membro',
-        active: true,
-        phone: '',
-        admissionDate: new Date().toISOString().split('T')[0],
-        acclamationDate: '',
-        proclamationDate: ''
-      });
-      setIsAdding(false);
+    if (formData.name && formData.cpf && formData.conferenceId) {
+      // Se já tem ID, mantém (edição). Se não, cria novo (novo cadastro).
+      const memberToSave = { 
+          ...formData, 
+          id: formData.id || uuidv4() 
+      } as Member;
+
+      onSave(memberToSave);
+      setIsFormOpen(false);
+      setFormData(emptyMember);
+    } else {
+        alert("Preencha os campos obrigatórios: Nome, CPF e Conferência.");
     }
   };
 
@@ -60,7 +68,7 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
   };
 
   const getConferenceName = (id?: string) => {
-      if (!id) return 'Não Vinculado (Admin?)';
+      if (!id) return 'Não Vinculado';
       return conferences.find(c => c.id === id)?.name || 'Conferência Desconhecida';
   };
 
@@ -72,7 +80,7 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
             <p className="text-slate-500">Gestão de Confrades, Consócias e Acessos</p>
         </div>
         <button 
-          onClick={() => setIsAdding(true)} 
+          onClick={handleNew} 
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
         >
           <PlusIcon />
@@ -80,22 +88,24 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
         </button>
       </div>
 
-      {isAdding && (
+      {isFormOpen && (
         <div className="bg-white p-6 rounded-lg shadow-md border border-slate-200 animate-fade-in">
           <div className="flex justify-between items-center mb-4 border-b pb-2">
-            <h3 className="text-lg font-bold text-slate-700">Ficha de Cadastro de Membro</h3>
-            <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            <h3 className="text-lg font-bold text-slate-700">
+                {formData.id ? 'Editar Membro' : 'Ficha de Cadastro de Membro'}
+            </h3>
+            <button onClick={() => setIsFormOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
           </div>
           
-          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {/* Linha 1: Dados Pessoais Básicos */}
             <div className="md:col-span-4">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
                 <input 
                     required
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.name} 
-                    onChange={e => setNewMember({...newMember, name: e.target.value})} 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
                 />
             </div>
             <div className="md:col-span-2">
@@ -103,9 +113,9 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <input 
                     required
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.cpf} 
+                    value={formData.cpf} 
                     placeholder="000.000.000-00"
-                    onChange={e => setNewMember({...newMember, cpf: e.target.value})} 
+                    onChange={e => setFormData({...formData, cpf: e.target.value})} 
                 />
             </div>
 
@@ -114,32 +124,36 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
             <div className="md:col-span-6">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Conferência (Vínculo)</label>
                 <select 
+                    required
                     className="w-full px-3 py-2 border rounded-md bg-white" 
-                    value={newMember.conferenceId} 
-                    onChange={e => setNewMember({...newMember, conferenceId: e.target.value})}
+                    value={formData.conferenceId} 
+                    onChange={e => setFormData({...formData, conferenceId: e.target.value})}
                 >
                     <option value="">Selecione...</option>
                     {conferences.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                {conferences.length === 1 && (
+                    <p className="text-[10px] text-slate-500 mt-1">Vinculado automaticamente à sua conferência.</p>
+                )}
             </div>
             
-            {/* Nível de Acesso Removido: Definido automaticamente pelo Cargo abaixo */}
+            {/* Nível de Acesso: Definido automaticamente pelo Cargo abaixo */}
 
             {/* Linha 2: Contato e Endereço */}
             <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Telefone / WhatsApp</label>
                 <input 
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.phone} 
-                    onChange={e => setNewMember({...newMember, phone: e.target.value})} 
+                    value={formData.phone} 
+                    onChange={e => setFormData({...formData, phone: e.target.value})} 
                 />
             </div>
             <div className="md:col-span-4">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Endereço Completo</label>
                 <input 
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.address} 
-                    onChange={e => setNewMember({...newMember, address: e.target.value})} 
+                    value={formData.address} 
+                    onChange={e => setFormData({...formData, address: e.target.value})} 
                 />
             </div>
 
@@ -148,8 +162,8 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <label className="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
                 <select 
                     className="w-full px-3 py-2 border rounded-md bg-white" 
-                    value={newMember.type} 
-                    onChange={e => setNewMember({...newMember, type: e.target.value as any})}
+                    value={formData.type} 
+                    onChange={e => setFormData({...formData, type: e.target.value as any})}
                 >
                     <option value="Confrade">Confrade</option>
                     <option value="Consócia">Consócia</option>
@@ -159,13 +173,13 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <label className="block text-sm font-medium text-slate-700 mb-1">Função / Encargo</label>
                 <select 
                     className="w-full px-3 py-2 border rounded-md bg-white" 
-                    value={newMember.role} 
+                    value={formData.role} 
                     onChange={e => {
                         const newRole = e.target.value;
                         // Regra de Negócio: Apenas 'Gestor do Sistema' ganha permissão de ADMIN automaticamente.
                         // Todos os outros cargos ganham permissão USER (restrito à conferência).
                         const newAccessLevel = newRole === 'Gestor do Sistema' ? 'admin' : 'user';
-                        setNewMember({...newMember, role: newRole, accessLevel: newAccessLevel});
+                        setFormData({...formData, role: newRole, accessLevel: newAccessLevel});
                     }}
                 >
                     <option value="Presidente">Presidente</option>
@@ -184,8 +198,8 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <label className="flex items-center space-x-2 cursor-pointer">
                     <input 
                         type="checkbox"
-                        checked={newMember.active}
-                        onChange={e => setNewMember({...newMember, active: e.target.checked})}
+                        checked={formData.active}
+                        onChange={e => setFormData({...formData, active: e.target.checked})}
                         className="h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                     />
                     <span className="text-sm font-medium text-slate-700">Membro Ativo</span>
@@ -198,8 +212,8 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <input 
                     type="date"
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.admissionDate} 
-                    onChange={e => setNewMember({...newMember, admissionDate: e.target.value})} 
+                    value={formData.admissionDate} 
+                    onChange={e => setFormData({...formData, admissionDate: e.target.value})} 
                 />
             </div>
             <div className="md:col-span-2">
@@ -207,8 +221,8 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <input 
                     type="date"
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.acclamationDate} 
-                    onChange={e => setNewMember({...newMember, acclamationDate: e.target.value})} 
+                    value={formData.acclamationDate} 
+                    onChange={e => setFormData({...formData, acclamationDate: e.target.value})} 
                 />
             </div>
             <div className="md:col-span-2">
@@ -216,14 +230,16 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                 <input 
                     type="date"
                     className="w-full px-3 py-2 border rounded-md" 
-                    value={newMember.proclamationDate} 
-                    onChange={e => setNewMember({...newMember, proclamationDate: e.target.value})} 
+                    value={formData.proclamationDate} 
+                    onChange={e => setFormData({...formData, proclamationDate: e.target.value})} 
                 />
             </div>
 
             <div className="md:col-span-6 flex justify-end gap-3 mt-4 pt-4 border-t">
-                <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md">Cancelar</button>
-                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium shadow-sm">Salvar Cadastro</button>
+                <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-md">Cancelar</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium shadow-sm">
+                    {formData.id ? 'Atualizar Membro' : 'Salvar Cadastro'}
+                </button>
             </div>
           </form>
         </div>
@@ -246,7 +262,7 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
             <tbody className="text-sm">
                 {members.length === 0 ? (
                     <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-500">Nenhum membro cadastrado.</td>
+                        <td colSpan={7} className="p-8 text-center text-slate-500">Nenhum membro encontrado para esta conferência.</td>
                     </tr>
                 ) : (
                     members.map(member => (
@@ -274,8 +290,18 @@ export const Members: React.FC<MembersProps> = ({ members, conferences, onSave, 
                         <td className="p-4 text-center">
                             <span className={`inline-block w-2 h-2 rounded-full ${member.active ? 'bg-green-500' : 'bg-red-500'}`} title={member.active ? 'Ativo' : 'Inativo'}></span>
                         </td>
-                        <td className="p-4 text-right">
-                            <button onClick={() => removeMember(member.id)} className="text-slate-400 hover:text-red-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
+                        <td className="p-4 text-right space-x-2">
+                            <button 
+                                onClick={() => handleEdit(member)} 
+                                className="text-blue-600 hover:text-blue-800 font-medium text-xs uppercase tracking-wide px-2 py-1 hover:bg-blue-50 rounded"
+                            >
+                                Editar
+                            </button>
+                            <button 
+                                onClick={() => removeMember(member.id)} 
+                                className="text-slate-400 hover:text-red-600 transition-colors p-2 hover:bg-slate-100 rounded-full"
+                                title="Excluir"
+                            >
                                 <TrashIcon />
                             </button>
                         </td>
